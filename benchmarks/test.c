@@ -3,6 +3,17 @@
 #include <pthread.h>
 #include "../rpthread.h"
 
+
+
+
+
+
+
+
+void simplef(){
+  puts("Donald- you are threaded\n");
+  
+}
 /* A scratch program template on which to call and
  * test rpthread library functions as you implement
  * them.
@@ -13,6 +24,7 @@
 int main(int argc, char **argv) {
 
 	/* Implement HERE */
-
+	rpthread_t thread;
+	rpthread_create(thread,NULL,simplef,NULL);
 	return 0;
 }

@@ -10,6 +10,13 @@
 #define READY 0
 #define SCHEDULED 1
 #define BLOCKED 2
+#define STACK_SIZE SIGSTKSZ
+
+Node* head;
+Node* tail;
+
+tcb* scheduler;
+
 // YOUR CODE HERE
 
 
@@ -21,21 +28,44 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
        // allocate space of stack for this thread to run
        // after everything is all set, push this thread int
        // YOUR CODE HERE
+		printf("doesn't works???\n");
 
-		ucontext_t cctx;
-		void* stack;
-		tcb* TCB = {thread, READY, cctx, stack, 0};
-		if(getcontext(&cctx) < 0){
+		tcb* block;
+		block->id=thread;
+		block->status=READY;
+		block->priority=0;
+		if(getcontext(&(block->context)) < 0){
 			perror("getcontext");
 			exit(1);
 		}
-	}
-    return 0;
+		block->stack=malloc(STACK_SIZE);
+		if (block.stack == NULL){
+			perror("Failed to allocate stack");
+			exit(1);
+		}
+		//Point uc_link to scheduler
+		block->context.uc_link=NULL;//Change when adding next thread
+		block->context.uc_stack.ss_sp=block.stack;
+		block->context.uc_stack.ss_size=STACK_SIZE;
+		block->context.uc_stack.ss_flags=0;
+
+		makecontext(&(block->context),function,0);
+		//setcontext(&block.context);
+		printf("works???\n");
+	return 0;
 };
 
 /* give CPU possession to other user-level threads voluntarily */
 int rpthread_yield() {
-	
+	head->thread->status=SCHEDULED;
+	schedule();
+	ucontext_t scheduler;
+	if(getcontext(&block->context) < 0){
+		perror("getcontext");
+		exit(1);
+	}
+
+
 	// change thread state from Running to Ready
 	// save context of this thread to its thread control block
 	// wwitch from thread context to scheduler context
@@ -46,6 +76,7 @@ int rpthread_yield() {
 
 /* terminate a thread */
 void rpthread_exit(void *value_ptr) {
+	free(head->tcb->stack);
 	// Deallocated any dynamic memory created when starting this thread
 
 	// YOUR CODE HERE
@@ -102,6 +133,7 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /* scheduler */
 static void schedule() {
+	
 	// Every time when timer interrup happens, your thread library 
 	// should be contexted switched from thread context to this 
 	// schedule function
@@ -129,6 +161,11 @@ static void schedule() {
 
 /* Round Robin (RR) scheduling algorithm */
 static void sched_rr() {
+	Node* temp= head;
+	tail->next=temp;
+	temp->next=NULL;
+	head=head->next;
+	swapContext(temp->tcb.context,head->tcb.context);
 	// Your own implementation of RR
 	// (feel free to modify arguments and return types)
 

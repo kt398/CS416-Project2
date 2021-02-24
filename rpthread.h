@@ -28,6 +28,10 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "ucontext.h"
+#include <signal.h>
+#include <unistd.h>
+
 
 typedef uint rpthread_t;
 
@@ -41,7 +45,7 @@ typedef struct threadControlBlock {
 	// And more ...
 
 	// YOUR CODE HERE
-	rpthread_t id;
+	rpthread_t *id;
 	int status;
 	ucontext_t context;
 	void* stack;
@@ -59,7 +63,10 @@ typedef struct rpthread_mutex_t {
 // Feel free to add your own auxiliary data structures (linked list or queue etc...)
 
 // YOUR CODE HERE
-
+typedef struct node{
+	tcb* tcb;
+	node* next;
+}Node;
 
 /* Function Declarations: */
 
