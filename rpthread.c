@@ -15,7 +15,7 @@
 Node* head;
 Node* tail;
 
-tcb* scheduler;
+ucontext_t* sched=NULL;
 
 // YOUR CODE HERE
 
@@ -28,44 +28,59 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
        // allocate space of stack for this thread to run
        // after everything is all set, push this thread int
        // YOUR CODE HERE
+   		printf("hello12345\n");
 		printf("doesn't works???\n");
 
-		tcb* block;
-		block->id=thread;
-		block->status=READY;
-		block->priority=0;
-		if(getcontext(&(block->context)) < 0){
+		tcb block;
+		block.id=thread;
+		block.status=READY;
+		block.priority=0;
+		if(getcontext(block.context) < 0){
 			perror("getcontext");
 			exit(1);
 		}
-		block->stack=malloc(STACK_SIZE);
+
+
+		block.stack=malloc(STACK_SIZE);
 		if (block.stack == NULL){
 			perror("Failed to allocate stack");
 			exit(1);
 		}
-		//Point uc_link to scheduler
-		block->context.uc_link=NULL;//Change when adding next thread
-		block->context.uc_stack.ss_sp=block.stack;
-		block->context.uc_stack.ss_size=STACK_SIZE;
-		block->context.uc_stack.ss_flags=0;
+   		printf("hello\n");
 
-		makecontext(&(block->context),function,0);
-		//setcontext(&block.context);
+		if(sched==NULL){
+			printf("NULL\n");
+			sched=malloc(sizeof(ucontext_t));
+			void* schedStack=malloc(STACK_SIZE);
+			if(schedStack == NULL){
+				perror("Failed to allocate stack");
+				exit(1);
+			}
+			if(getcontext(sched) < 0){
+				perror("getcontext");
+				exit(1);
+			}
+			sched->uc_link=NULL;//Change when adding next thread
+			sched->uc_stack.ss_sp=schedStack;
+			sched->uc_stack.ss_size=STACK_SIZE;
+			sched->uc_stack.ss_flags=0;
+			makecontext(sched,schedule,0);
+		}
+		//Point uc_link to scheduler
+		block.context->uc_link=sched;//Change when adding next thread
+		block.context->uc_stack.ss_sp=block.stack;
+		block.context->uc_stack.ss_size=STACK_SIZE;
+		block.context->uc_stack.ss_flags=0;
+
+		makecontext(block.context,function,0);
+		setcontext(block.context);
 		printf("works???\n");
 	return 0;
 };
 
 /* give CPU possession to other user-level threads voluntarily */
 int rpthread_yield() {
-	head->thread->status=SCHEDULED;
-	schedule();
-	ucontext_t scheduler;
-	if(getcontext(&block->context) < 0){
-		perror("getcontext");
-		exit(1);
-	}
-
-
+	head->tcb->status=SCHEDULED;
 	// change thread state from Running to Ready
 	// save context of this thread to its thread control block
 	// wwitch from thread context to scheduler context
@@ -133,7 +148,7 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /* scheduler */
 static void schedule() {
-	
+	puts("Schedule\n");
 	// Every time when timer interrup happens, your thread library 
 	// should be contexted switched from thread context to this 
 	// schedule function
@@ -165,7 +180,7 @@ static void sched_rr() {
 	tail->next=temp;
 	temp->next=NULL;
 	head=head->next;
-	swapContext(temp->tcb.context,head->tcb.context);
+	swapcontext(temp->tcb->context,head->tcb->context);
 	// Your own implementation of RR
 	// (feel free to modify arguments and return types)
 

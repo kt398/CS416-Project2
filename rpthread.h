@@ -10,7 +10,7 @@
 #define _GNU_SOURCE
 
 /* To use Linux pthread Library in Benchmark, you have to comment the USE_RTHREAD macro */
-#define USE_RTHREAD 1
+//#define USE_RTHREAD 1
 
 #ifndef TIMESLICE
 /* defined timeslice to 5 ms, feel free to change this while testing your code
@@ -45,9 +45,9 @@ typedef struct threadControlBlock {
 	// And more ...
 
 	// YOUR CODE HERE
-	rpthread_t *id;
+	rpthread_t* id;
 	int status;
-	ucontext_t context;
+	ucontext_t* context;
 	void* stack;
 	int priority;
 } tcb; 
@@ -65,7 +65,7 @@ typedef struct rpthread_mutex_t {
 // YOUR CODE HERE
 typedef struct node{
 	tcb* tcb;
-	node* next;
+	struct node* next;
 }Node;
 
 /* Function Declarations: */
@@ -96,6 +96,7 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
+static void schedule();
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
 #define pthread_mutex_t rpthread_mutex_t
