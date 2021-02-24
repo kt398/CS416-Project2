@@ -7,6 +7,9 @@
 #include "rpthread.h"
 
 // INITAILIZE ALL YOUR VARIABLES HERE
+#define READY 0
+#define SCHEDULED 1
+#define BLOCKED 2
 // YOUR CODE HERE
 
 
@@ -18,7 +21,15 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
        // allocate space of stack for this thread to run
        // after everything is all set, push this thread int
        // YOUR CODE HERE
-	
+
+		ucontext_t cctx;
+		void* stack;
+		tcb* TCB = {thread, READY, cctx, stack, 0};
+		if(getcontext(&cctx) < 0){
+			perror("getcontext");
+			exit(1);
+		}
+	}
     return 0;
 };
 

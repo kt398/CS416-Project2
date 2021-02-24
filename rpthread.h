@@ -41,6 +41,11 @@ typedef struct threadControlBlock {
 	// And more ...
 
 	// YOUR CODE HERE
+	rpthread_t id;
+	int status;
+	ucontext_t context;
+	void* stack;
+	int priority;
 } tcb; 
 
 /* mutex struct definition */
