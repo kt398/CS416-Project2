@@ -12,89 +12,104 @@
 #define BLOCKED 2
 #define STACK_SIZE SIGSTKSZ
 
-Node* head;
-Node* tail;
+#ifndef MLFQ
+	static int sched = 0;
+#else 
+	static int sched = 1;
+#endif
 
-ucontext_t* sched=NULL;
 
+Node* head = NULL;
+Node* tail = NULL;
+
+ucontext_t* schedContext=NULL;
+
+static void schedule();
+static void sched_rr();
+static void enqueue();
 // YOUR CODE HERE
 
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
-       // create Thread Control Block
-       // create and initialize the context of this thread
-       // allocate space of stack for this thread to run
-       // after everything is all set, push this thread int
-       // YOUR CODE HERE
-   		printf("hello12345\n");
-		printf("doesn't works???\n");
+	// create Thread Control Block
+	// create and initialize the context of this thread
+	// allocate space of stack for this thread to run
+	// after everything is all set, push this thread int
 
-		tcb block;
-		block.id=thread;
-		block.status=READY;
-		block.priority=0;
-		if(getcontext(block.context) < 0){
-			perror("getcontext");
-			exit(1);
-		}
+	// YOUR CODE HERE
+
+	tcb block;
+	block.id = thread;
+	block.status = READY;
+	block.priority = 0;
+	block.parent = NULL;
+	if(getcontext(block.context) < 0){
+		perror("getcontext");
+		exit(1);
+	}
 
 
-		block.stack=malloc(STACK_SIZE);
-		if (block.stack == NULL){
+	block.stack=malloc(STACK_SIZE);
+	if (block.stack == NULL){
+		perror("Failed to allocate stack");
+		exit(1);
+	}
+
+	//initialize scheduler context 
+	if(schedContext==NULL){
+		schedContext=malloc(sizeof(ucontext_t));
+		void* schedStack=malloc(STACK_SIZE);
+		if(schedStack == NULL){
 			perror("Failed to allocate stack");
 			exit(1);
 		}
-   		printf("hello\n");
-
-		if(sched==NULL){
-			printf("NULL\n");
-			sched=malloc(sizeof(ucontext_t));
-			void* schedStack=malloc(STACK_SIZE);
-			if(schedStack == NULL){
-				perror("Failed to allocate stack");
-				exit(1);
-			}
-			if(getcontext(sched) < 0){
-				perror("getcontext");
-				exit(1);
-			}
-			sched->uc_link=NULL;//Change when adding next thread
-			sched->uc_stack.ss_sp=schedStack;
-			sched->uc_stack.ss_size=STACK_SIZE;
-			sched->uc_stack.ss_flags=0;
-			makecontext(sched,schedule,0);
+		if(getcontext(schedContext) < 0){
+			perror("getcontext");
+			exit(1);
 		}
-		//Point uc_link to scheduler
-		block.context->uc_link=sched;//Change when adding next thread
-		block.context->uc_stack.ss_sp=block.stack;
-		block.context->uc_stack.ss_size=STACK_SIZE;
-		block.context->uc_stack.ss_flags=0;
+		schedContext->uc_link=NULL;//Change when adding next thread
+		schedContext->uc_stack.ss_sp=schedStack;
+		schedContext->uc_stack.ss_size=STACK_SIZE;
+		schedContext->uc_stack.ss_flags=0;
+		makecontext(schedContext,schedule,0);
+	}
+	//Point uc_link to scheduler
+	block.context->uc_link=schedContext;//Change when adding next thread
+	block.context->uc_stack.ss_sp=block.stack;
+	block.context->uc_stack.ss_size=STACK_SIZE;
+	block.context->uc_stack.ss_flags=0;
 
-		makecontext(block.context,function,0);
-		setcontext(block.context);
-		printf("works???\n");
+	makecontext(block.context,function,0);
+	printf("here?\n");
+	enqueue(block);
+	setcontext(head->tcb->context);
 	return 0;
 };
 
 /* give CPU possession to other user-level threads voluntarily */
 int rpthread_yield() {
-	head->tcb->status=SCHEDULED;
 	// change thread state from Running to Ready
 	// save context of this thread to its thread control block
-	// wwitch from thread context to scheduler context
+	// switch from thread context to scheduler context
 
 	// YOUR CODE HERE
+
+	//save context then switch context to schedule method
+	printf("yield11111?\n");
+	swapcontext(head->tcb->context, schedContext);
+
+	printf("yield?\n");
 	return 0;
 };
 
 /* terminate a thread */
 void rpthread_exit(void *value_ptr) {
-	free(head->tcb->stack);
 	// Deallocated any dynamic memory created when starting this thread
 
 	// YOUR CODE HERE
+	free(head->tcb->stack);
 };
 
 
@@ -105,6 +120,15 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 	// de-allocate any dynamic memory created by the joining thread
   
 	// YOUR CODE HERE
+	Node* ptr = head.next;
+	while(ptr!=null){
+		if(ptr->tcb->thread == thread){
+			ptr->tcb->parent = head->tcb->id;
+			head->tcb->status = BLOCKED;
+			break;
+		}
+	}
+
 	return 0;
 };
 
@@ -162,11 +186,13 @@ static void schedule() {
 	// 		sched_mlfq();
 
 	// YOUR CODE HERE
+	
 
 // schedule policy
 #ifndef MLFQ
 	// Choose RR
-     // CODE 1
+	// CODE 1
+	sched_rr();
 #else 
 	// Choose MLFQ
      // CODE 2
@@ -176,11 +202,19 @@ static void schedule() {
 
 /* Round Robin (RR) scheduling algorithm */
 static void sched_rr() {
+	if(head->next == NULL){
+		printf("sched_rr\n");
+		setcontext(head->tcb->context);
+		return;	
+	}
+
+	head->tcb->status = SCHEDULED;
 	Node* temp= head;
 	tail->next=temp;
 	temp->next=NULL;
 	head=head->next;
-	swapcontext(temp->tcb->context,head->tcb->context);
+	head->tcb->status = READY;
+	swapcontext(temp->tcb->context, head->tcb->context);
 	// Your own implementation of RR
 	// (feel free to modify arguments and return types)
 
@@ -198,4 +232,16 @@ static void sched_mlfq() {
 // Feel free to add any other functions you need
 
 // YOUR CODE HERE
+static void enqueue(tcb block){
+	if(head == NULL){
+		head = malloc(sizeof(Node));
+		head->tcb = &block;
+		head->next = NULL;
+		return;
+	}
+	if (sched == 0){
 
+	}else if (sched == 1){
+		sched_mlfq();
+	}
+}

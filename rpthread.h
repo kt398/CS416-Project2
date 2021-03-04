@@ -50,6 +50,7 @@ typedef struct threadControlBlock {
 	ucontext_t* context;
 	void* stack;
 	int priority;
+	rpthread_t* parent;
 } tcb; 
 
 /* mutex struct definition */
@@ -96,7 +97,6 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
-static void schedule();
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
 #define pthread_mutex_t rpthread_mutex_t

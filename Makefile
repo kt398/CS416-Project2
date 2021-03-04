@@ -4,7 +4,7 @@ AR = ar -rc
 RANLIB = ranlib
 
 SCHED = RR
-TSLICE=15 ##timeslice variable
+TSLICE= 15 ##timeslice variable
 
 all: rpthread.a
 
