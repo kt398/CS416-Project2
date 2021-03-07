@@ -51,6 +51,7 @@ typedef struct threadControlBlock {
 	void* stack;
 	int priority;
 	rpthread_t* parent;
+	void *val;
 } tcb; 
 
 /* mutex struct definition */
