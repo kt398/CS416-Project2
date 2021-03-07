@@ -51,7 +51,7 @@ typedef struct threadControlBlock {
 	void* stack;
 	int priority;
 	rpthread_t* parent;
-	void *val;
+	void **val;
 } tcb; 
 
 /* mutex struct definition */
@@ -98,7 +98,7 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
-#ifdef USE_RTHREAD
+// #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
 #define pthread_mutex_t rpthread_mutex_t
 #define pthread_create rpthread_create
@@ -110,4 +110,4 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 #define pthread_mutex_destroy rpthread_mutex_destroy
 #endif
 
-#endif
+// #endif

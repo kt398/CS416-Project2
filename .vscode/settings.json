@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "rpthread.h": "c",
+        "stdio.h": "c"
+    }
+}
