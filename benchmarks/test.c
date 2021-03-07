@@ -19,8 +19,10 @@ void simplef(){
 int main(int argc, char **argv) {
 
 	/* Implement HERE */
-	rpthread_t thread;
-	rpthread_create(thread,NULL,simplef,NULL);
+	rpthread_t thread, thread2;
+	rpthread_create(thread, NULL, simplef, NULL);
+	printf("Here in main after Thread 1\n");
+	rpthread_create(thread2 ,NULL, simplef, NULL);
 	
 	return 0;
 }

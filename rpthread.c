@@ -69,20 +69,20 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 			perror("getcontext");
 			exit(1);
 		}
-		schedContext->uc_link=NULL;//Change when adding next thread
+		schedContext->uc_link=NULL;
 		schedContext->uc_stack.ss_sp=schedStack;
 		schedContext->uc_stack.ss_size=STACK_SIZE;
 		schedContext->uc_stack.ss_flags=0;
 		makecontext(schedContext,schedule,0);
 	}
-	//Point uc_link to scheduler
-	block.context->uc_link=schedContext;//Change when adding next thread
+
+	//Point uc_link to scheduler 
+	block.context->uc_link=schedContext;
 	block.context->uc_stack.ss_sp=block.stack;
 	block.context->uc_stack.ss_size=STACK_SIZE;
 	block.context->uc_stack.ss_flags=0;
 
 	makecontext(block.context,function,0);
-	printf("here?\n");
 	enqueue(block);
 	setcontext(head->tcb->context);
 	return 0;
@@ -96,11 +96,8 @@ int rpthread_yield() {
 
 	// YOUR CODE HERE
 
-	//save context then switch context to schedule method
-	printf("yield11111?\n");
+	//save context then switch to scheduler context
 	swapcontext(head->tcb->context, schedContext);
-
-	printf("yield?\n");
 	return 0;
 };
 
@@ -109,20 +106,26 @@ void rpthread_exit(void *value_ptr) {
 	// Deallocated any dynamic memory created when starting this thread
 
 	// YOUR CODE HERE
+	//store value_ptr somewhere
+	int* value = (int*) malloc(sizeof(int));
+	*value = *(int*)value_ptr;
+	//free dynamic memory and terminate
 	free(head->tcb->stack);
 };
 
 
 /* Wait for thread termination */
 int rpthread_join(rpthread_t thread, void **value_ptr) {
-	
 	// wait for a specific thread to terminate
 	// de-allocate any dynamic memory created by the joining thread
   
 	// YOUR CODE HERE
-	Node* ptr = head.next;
-	while(ptr!=null){
-		if(ptr->tcb->thread == thread){
+	//get value_ptr from stored
+	//set retval
+
+	Node* ptr = head->next;
+	while(ptr!=NULL){
+		if(*(ptr->tcb->id) == thread){
 			ptr->tcb->parent = head->tcb->id;
 			head->tcb->status = BLOCKED;
 			break;
@@ -172,7 +175,6 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /* scheduler */
 static void schedule() {
-	puts("Schedule\n");
 	// Every time when timer interrup happens, your thread library 
 	// should be contexted switched from thread context to this 
 	// schedule function
@@ -196,29 +198,34 @@ static void schedule() {
 #else 
 	// Choose MLFQ
      // CODE 2
+	sched_mlfq();
 #endif
 
 }
 
 /* Round Robin (RR) scheduling algorithm */
 static void sched_rr() {
+	// Your own implementation of RR
+	// (feel free to modify arguments and return types)
+
+	// YOUR CODE HERE
+
+	//No other processes in runqueue so we continue running process
 	if(head->next == NULL){
 		printf("sched_rr\n");
 		setcontext(head->tcb->context);
 		return;	
 	}
 
+	//Otherwise, we switch to the next thread in the runqueue
 	head->tcb->status = SCHEDULED;
-	Node* temp= head;
-	tail->next=temp;
+	Node* temp = head;
+	tail->next = temp;
+	tail = tail->next;
+	head = head->next;
 	temp->next=NULL;
-	head=head->next;
 	head->tcb->status = READY;
 	swapcontext(temp->tcb->context, head->tcb->context);
-	// Your own implementation of RR
-	// (feel free to modify arguments and return types)
-
-	// YOUR CODE HERE
 }
 
 /* Preemptive MLFQ scheduling algorithm */
@@ -237,11 +244,20 @@ static void enqueue(tcb block){
 		head = malloc(sizeof(Node));
 		head->tcb = &block;
 		head->next = NULL;
+		tail = head;
 		return;
 	}
-	if (sched == 0){
 
-	}else if (sched == 1){
-		sched_mlfq();
-	}
+#ifndef MLFQ
+	// RR - Enqueue into end of runqueue
+	Node* ptr = tail;
+	ptr->next = malloc(sizeof(Node));
+	ptr->next->tcb = &block;
+	ptr->next->next = NULL;
+	tail = ptr->next;
+	
+#else 
+	// MLFQ - Enqueue to the topmost queue
+
+#endif
 }
