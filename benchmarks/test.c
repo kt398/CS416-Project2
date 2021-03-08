@@ -9,17 +9,25 @@
 #include <stdlib.h>
 #define STACK_SIZE SIGSTKSZ
 
+int x = 0;
 void simplef(){
 	puts("Donald- you are threaded\n");
-	rpthread_yield();
+	// rpthread_yield();
 	puts("We're back\n");
 	//rpthread_exit(NULL);
 
 }
 
+void incrementTest(){
+	while(1){
+		x++;
+		// printf("X VALUE: %d\n", x);
+	}
+}
+
 void simplef2(){
 	puts("Bob- you are threaded\n");
-	rpthread_yield();
+	// rpthread_yield();
 	puts("We're back2\n");
 	int* val = malloc(sizeof(int));
 	*val = 5;
@@ -48,9 +56,9 @@ int main(int argc, char **argv) {
 	}
 
 	rpthread_t thread, thread2;
-	rpthread_create(&thread, NULL, simplef, NULL);
+	rpthread_create(&thread, NULL, incrementTest, NULL);
 	printf("Here in main after Thread 1\n");
-	rpthread_create(&thread2 ,NULL, simplef2, NULL);
+	rpthread_create(&thread2 ,NULL, incrementTest, NULL);
 	int* val;
 	rpthread_join(thread2, &val);
 	printf("JOIN RETURN VALUE THINGY: %d\n", *val);
