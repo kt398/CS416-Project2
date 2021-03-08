@@ -41,7 +41,6 @@ void simplef2(){
  * This will not be graded.
  */
 
-ucontext_t* mainContext=NULL;
 rpthread_t mainThread=NULL;
 
 
@@ -49,11 +48,6 @@ int main(int argc, char **argv) {
 
 	/* Implement HERE */
 
-	if(mainThread==NULL){
-		rpthread_create(&mainThread,NULL,main,NULL);
-		ucontext_t* temp=tempFunction();
-		setcontext(temp);
-	}
 
 	rpthread_t thread, thread2;
 	rpthread_create(&thread, NULL, incrementTest, NULL);

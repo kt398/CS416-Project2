@@ -4,8 +4,8 @@
 #include "../rpthread.h"
 
 #define DEFAULT_THREAD_NUM 4
-#define C_SIZE 100000
-#define R_SIZE 10000
+#define C_SIZE 5
+#define R_SIZE 5
 
 pthread_mutex_t   mutex;
 int thread_num;
@@ -32,7 +32,7 @@ void parallel_calculate(void* arg) {
 		sum += pSum[j];
 		pthread_mutex_unlock(&mutex);
 	}
-
+	printf("%d\n",sum);
 	pthread_exit(NULL);
 }
 
@@ -94,9 +94,11 @@ int main(int argc, char **argv) {
 	for (i = 0; i < thread_num; ++i)
 		pthread_create(&thread[i], NULL, &parallel_calculate, &counter[i]);
 
-	for (i = 0; i < thread_num; ++i)
+	for (i = 0; i < thread_num; ++i){
+		printf("Before join: %d\n",i);
 		pthread_join(thread[i], NULL);
-
+		printf("After join: %d\n",i);
+	}
 	clock_gettime(CLOCK_REALTIME, &end);
         printf("running time: %lu micro-seconds\n", 
 	       (end.tv_sec - start.tv_sec) * 1000 + (end.tv_nsec - start.tv_nsec) / 1000000);
