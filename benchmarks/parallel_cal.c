@@ -4,8 +4,8 @@
 #include "../rpthread.h"
 
 #define DEFAULT_THREAD_NUM 4
-#define C_SIZE 3
-#define R_SIZE 3
+#define C_SIZE 100000
+#define R_SIZE 10000
 
 pthread_mutex_t   mutex;
 int thread_num;
@@ -30,7 +30,6 @@ void parallel_calculate(void* arg) {
 	for (j = n; j < R_SIZE; j += thread_num) {
 		pthread_mutex_lock(&mutex);
 		sum += pSum[j];
-		printf("Sum:%d\n",sum);
 		pthread_mutex_unlock(&mutex);
 	}
 	pthread_exit(NULL);
@@ -39,7 +38,6 @@ void parallel_calculate(void* arg) {
 
 /* verification function */
 void verify() {
-	
 	int i = 0, j = 0;
 	sum = 0;
 	memset(&pSum, 0, R_SIZE*sizeof(int));
@@ -52,6 +50,7 @@ void verify() {
 	for (j = 0; j < R_SIZE; j += 1) {
 		sum += pSum[j];
 	}
+
 	printf("verified sum is: %d\n", sum);
 }
 
@@ -95,9 +94,7 @@ int main(int argc, char **argv) {
 		pthread_create(&thread[i], NULL, &parallel_calculate, &counter[i]);
 
 	for (i = 0; i < thread_num; ++i){
-		printf("Before join: %d\n",i);
 		pthread_join(thread[i], NULL);
-		printf("After join: %d\n",i);
 	}
 	clock_gettime(CLOCK_REALTIME, &end);
         printf("running time: %lu micro-seconds\n", 

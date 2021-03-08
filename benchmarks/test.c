@@ -10,6 +10,7 @@
 #define STACK_SIZE SIGSTKSZ
 
 int x = 0;
+int y = 0;
 void simplef(){
 	puts("Donald- you are threaded\n");
 	// rpthread_yield();
@@ -21,7 +22,14 @@ void simplef(){
 void incrementTest(){
 	while(1){
 		x++;
-		// printf("X VALUE: %d\n", x);
+		printf("X VALUE: %d\n", x);
+	}
+}
+
+void incrementTest2(){
+	while(1){
+		y--;
+		printf("Y VALUE: %d\n", y);
 	}
 }
 
@@ -48,9 +56,9 @@ int main(int argc, char **argv) {
 
 	/* Implement HERE */
 	rpthread_t thread, thread2;
-	rpthread_create(&thread, NULL, simplef, NULL);
+	rpthread_create(&thread, NULL, incrementTest, NULL);
 	printf("Here in main after Thread 1\n");
-	rpthread_create(&thread2 ,NULL, simplef2, NULL);
+	rpthread_create(&thread2 ,NULL, incrementTest2, NULL);
 	int* val;
 	rpthread_join(thread2, &val);
 	printf("JOIN RETURN VALUE THINGY: %d\n", *val);
