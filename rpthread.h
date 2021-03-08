@@ -45,10 +45,12 @@ typedef struct threadControlBlock {
 	// And more ...
 
 	// YOUR CODE HERE
+	char* temp;
 	rpthread_t* id;
 	int status;
 	ucontext_t* context;
 	void* stack;
+	void* args;
 	int priority;
 	rpthread_t* parent;
 	void **val;

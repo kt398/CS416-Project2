@@ -47,12 +47,10 @@ rpthread_t mainThread=NULL;
 int main(int argc, char **argv) {
 
 	/* Implement HERE */
-
-
 	rpthread_t thread, thread2;
-	rpthread_create(&thread, NULL, incrementTest, NULL);
+	rpthread_create(&thread, NULL, simplef, NULL);
 	printf("Here in main after Thread 1\n");
-	rpthread_create(&thread2 ,NULL, incrementTest, NULL);
+	rpthread_create(&thread2 ,NULL, simplef2, NULL);
 	int* val;
 	rpthread_join(thread2, &val);
 	printf("JOIN RETURN VALUE THINGY: %d\n", *val);

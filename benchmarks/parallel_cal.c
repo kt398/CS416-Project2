@@ -4,8 +4,8 @@
 #include "../rpthread.h"
 
 #define DEFAULT_THREAD_NUM 4
-#define C_SIZE 5
-#define R_SIZE 5
+#define C_SIZE 3
+#define R_SIZE 3
 
 pthread_mutex_t   mutex;
 int thread_num;
@@ -21,7 +21,7 @@ void parallel_calculate(void* arg) {
 	
 	int i = 0, j = 0;
 	int n = *((int*) arg);
-
+	printf("n:%d\n",n);
 	for (j = n; j < R_SIZE; j += thread_num) {
 		for (i = 0; i < C_SIZE; ++i) {
 			pSum[j] += a[j][i] * i;
@@ -30,9 +30,9 @@ void parallel_calculate(void* arg) {
 	for (j = n; j < R_SIZE; j += thread_num) {
 		pthread_mutex_lock(&mutex);
 		sum += pSum[j];
+		printf("Sum:%d\n",sum);
 		pthread_mutex_unlock(&mutex);
 	}
-	printf("%d\n",sum);
 	pthread_exit(NULL);
 }
 
@@ -109,6 +109,8 @@ int main(int argc, char **argv) {
 
 	// feel free to verify your answer here:
 	verify();
+	printList();
+
 	// Free memory on Heap
 	free(thread);
 	free(counter);
