@@ -26,6 +26,8 @@ Node* blocked = NULL;
 
 ucontext_t* schedContext=NULL;
 ucontext_t* exitContext=NULL;
+ucontext_t* mainContext=NULL;
+
 
 //functions
 static void schedule();
@@ -35,7 +37,8 @@ void printList();
 Node* findContext(rpthread_t*, Node*);
 Node* dequeueBlocked(rpthread_t*, Node*);
 ucontext_t* initializeContext();
-
+Node* dequeue(rpthread_t*, Node*);
+void enqueueBlocked(Node*);
 
 ucontext_t* tempFunction(){
 	return head->tcb->context;
@@ -46,14 +49,36 @@ ucontext_t* tempFunction(){
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
+
 	// create Thread Control Block
 	// create and initialize the context of this thread
 	// allocate space of stack for this thread to run
 	// after everything is all set, push this thread int
-
+	// printf("CREATE\n");
 	// YOUR CODE HERE
 
 	//Initialize thread control block
+	if(mainContext==NULL&&head==NULL){
+		printf("Inside create first if\n");
+		rpthread_t mainThread;
+		// if (setcontext(&cctx) < 0){
+		// 	perror("set current context");
+		// 	exit(1);
+		// }
+		tcb* mainBlock=malloc(sizeof(tcb));
+		mainBlock->id=malloc(sizeof(rpthread_t));
+		mainBlock->id=&mainThread;
+		mainBlock->status= READY;
+		mainBlock->priority=0;
+		mainBlock->parent=malloc(sizeof(rpthread_t));
+		mainBlock->parent=NULL;
+		mainBlock->context=initializeContext();
+		mainBlock->context->uc_link=exitContext;
+		Node* mainNode = malloc(sizeof(Node));
+		mainNode->tcb = mainBlock;
+		mainNode->next = NULL;
+		enqueue(mainNode);
+	}
 	tcb* block = malloc(sizeof(tcb));
 	block->id = malloc(sizeof(rpthread_t));
 	block->id = thread;
@@ -83,7 +108,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	node->next = NULL;
 	
 	enqueue(node);
-	// printList();
+	printList();
 	//setcontext(head->tcb->context);
 	return 0;
 };
@@ -96,7 +121,7 @@ ucontext_t* initializeContext(){
 		exit(1);
 	}
 	if(getcontext(context) < 0){
-		perror("getcontext");
+		perror("getcontext error");
 		exit(1);
 	}
 	context->uc_link=NULL;
@@ -108,8 +133,16 @@ ucontext_t* initializeContext(){
 
 void printList(){
 	Node* temp=head;
+	printf("Head List:\n");
 	while(temp!=NULL){
-		printf("%d\n",temp->tcb->status);
+		printf("%d,",temp->tcb->status);
+		temp=temp->next;
+	}
+	printf("\n");
+	printf("Blocked List:\n");
+	temp=blocked;
+	while(temp!=NULL){
+		printf("%d,",temp->tcb->status);
 		temp=temp->next;
 	}
 }
@@ -141,12 +174,12 @@ void rpthread_exit(void *value_ptr){
 
 	// store value_ptr in parent's tcb
 	if(head->tcb->parent!=NULL){
-		printf("Parent not null\n");
-		Node* par = dequeueBlocked(head->tcb->parent, blocked);
+		// printf("Parent not null\n");
+		Node* par = dequeue(head->tcb->parent, head);
 		
 		//Set to SCHEDULED and enqueue back to runqueue
 		par->tcb->status = SCHEDULED;
-		printf("test\n");
+		// printf("test\n");
 		enqueue(par);
 		if(value_ptr!=NULL){
 			par->tcb->val= value_ptr;
@@ -166,6 +199,27 @@ Node* findContext(rpthread_t* key, Node* list){
 	return NULL;
 }
 
+
+Node* dequeue(rpthread_t* key, Node* list){
+	Node* temp = list;
+	Node* prev = NULL;
+	
+	while (temp!=NULL){
+		if(temp->tcb->id==key){
+			if(prev == NULL){
+				head = temp->next;
+			}else{
+				prev->next = temp->next;
+				head = prev;
+			}
+			temp->next = NULL;
+			return temp;
+		}
+		prev = temp;
+		temp = temp->next;
+	}
+	return NULL;
+}
 Node* dequeueBlocked(rpthread_t* key, Node* list){
 	Node* temp = list;
 	Node* prev = NULL;
@@ -187,24 +241,46 @@ Node* dequeueBlocked(rpthread_t* key, Node* list){
 	return NULL;
 }
 
+void enqueueBlocked(Node* toBlock){
+	toBlock->next=NULL;
+	if(blocked==NULL){
+		blocked=toBlock;
+	}
+	else{
+		Node* temp=blocked;
+		while(temp->next!=NULL){
+			temp=temp->next;
+		}
+		temp->next=toBlock;
+
+	}
+}
+
+
 /* Wait for thread termination */
 int rpthread_join(rpthread_t thread, void **value_ptr) {
 	// wait for a specific thread to terminate
 	// de-allocate any dynamic memory created by the joining thread
   
 	// YOUR CODE HERE
-	printf("inside join\n");
 	Node* ptr = head->next;
 	while(ptr!=NULL){
 		// printf("%d\n", (ptr->tcb->id));
 		if(*(ptr->tcb->id) == thread){
 			ptr->tcb->parent = head->tcb->id;
 			head->tcb->status = BLOCKED;
-			printList();
+			Node* toBlock=dequeue(head->tcb->id,head);
+			enqueueBlocked(toBlock);
+			
+			// printList();
 			break;
 		}
 		ptr = ptr->next;
 	}
+	printf("inside join, before swap context\n");
+
+	printList();
+	printf("End Print List\n");
 	swapcontext(head->tcb->context, schedContext);
 	if(value_ptr!=NULL){
 		*value_ptr = head->tcb->val;
@@ -252,7 +328,7 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /* scheduler */
 static void schedule() {
-	printf("Inside schedule\n");
+	// printf("Inside schedule\n");
 	// Every time when timer interrup happens, your thread library 
 	// should be contexted switched from thread context to this 
 	// schedule function
@@ -292,7 +368,7 @@ static void sched_rr() {
 	int status=head->tcb->status;
 
 	if(status==KILL){ //coming from exit
-		printf("KILL\n");
+		// printf("KILL\n");
 		Node* temp=head;
 		head=head->next;
 		// free(temp->tcb->id);
@@ -315,7 +391,7 @@ static void sched_rr() {
 	}
 
 	if(head!= NULL){
-		printf("sched_rr\n");
+		// printf("sched_rr\n");
 		head->tcb->status=READY;
 		setcontext(head->tcb->context);
 	}
