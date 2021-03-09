@@ -15,7 +15,7 @@
 #ifndef TIMESLICE
 /* defined timeslice to 5 ms, feel free to change this while testing your code
  * it can be done directly in the Makefile*/
-#define TIMESLICE 5
+#define TIMESLICE 1
 #endif
 
 #define READY 0
@@ -32,6 +32,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include <sys/time.h>
+#include <string.h>
 
 typedef uint rpthread_t;
 

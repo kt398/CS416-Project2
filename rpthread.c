@@ -11,6 +11,8 @@
 #define SCHEDULED 1
 #define BLOCKED 2
 #define KILL 3
+#define TIME 4
+
 #define STACK_SIZE SIGSTKSZ
 
 #ifndef MLFQ
@@ -27,7 +29,7 @@ Node* blocked = NULL;
 ucontext_t* schedContext=NULL;
 ucontext_t* exitContext=NULL;
 ucontext_t* mainContext=NULL;
-
+struct itimerval timer;
 
 //functions
 static void schedule();
@@ -39,6 +41,7 @@ Node* dequeueBlocked(rpthread_t*, Node*);
 ucontext_t* initializeContext();
 Node* dequeue(rpthread_t*, Node*);
 void enqueueBlocked(Node*);
+void time_handler();
 
 ucontext_t* tempFunction(){
 	return head->tcb->context;
@@ -84,6 +87,19 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 		mainNode->tcb = mainBlock;
 		mainNode->next = NULL;
 		enqueue(mainNode);
+
+		// Use sigaction to register signal handler
+		struct sigaction sa;
+		memset (&sa, 0, sizeof (sa));
+		sa.sa_handler = &time_handler;
+		sigaction (SIGPROF, &sa, NULL);
+
+		timer.it_interval.tv_usec = 0; 
+		timer.it_interval.tv_sec = 0;
+		timer.it_value.tv_usec = TIMESLICE;
+		timer.it_value.tv_sec = 0;
+		// Set the timer up (start the timer)
+		setitimer(ITIMER_PROF, &timer, NULL);
 	}
 	tcb* block = malloc(sizeof(tcb));
 	block->id = malloc(sizeof(rpthread_t));
@@ -120,6 +136,14 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	//setcontext(head->tcb->context);
 	return 0;
 };
+
+void time_handler(){
+	// printf("Time slice has ended\n");
+	if(head->next!=NULL){
+		head->tcb->status = SCHEDULED;
+		swapcontext(head->tcb->context, schedContext);
+	}
+}
 
 ucontext_t* initializeContext(){
 	ucontext_t* context=malloc(sizeof(ucontext_t));
@@ -389,7 +413,7 @@ static void sched_rr() {
 		free(temp);
 	}
 	else if(status==SCHEDULED){ //coming from yield
-		printf("Yield?\n");
+		// printf("Yield?\n");
 		Node* temp = head;
 		head = head->next;
 		temp->next = NULL;
@@ -405,6 +429,9 @@ static void sched_rr() {
 	if(head!= NULL){
 		// printf("sched_rr\n");
 		head->tcb->status=READY;
+		timer.it_interval.tv_usec = 0;
+		timer.it_value.tv_usec = TIMESLICE;
+		setitimer(ITIMER_PROF, &timer, NULL);
 		setcontext(head->tcb->context);
 	}
 	else{
