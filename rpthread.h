@@ -61,7 +61,8 @@ typedef struct threadControlBlock {
 /* mutex struct definition */
 typedef struct rpthread_mutex_t {
 	/* add something here */
-
+	tcb* tcb;
+	
 	// YOUR CODE HERE
 } rpthread_mutex_t;
 

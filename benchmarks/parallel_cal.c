@@ -21,7 +21,6 @@ void parallel_calculate(void* arg) {
 	
 	int i = 0, j = 0;
 	int n = *((int*) arg);
-	printf("n:%d\n",n);
 	for (j = n; j < R_SIZE; j += thread_num) {
 		for (i = 0; i < C_SIZE; ++i) {
 			pSum[j] += a[j][i] * i;
@@ -106,7 +105,7 @@ int main(int argc, char **argv) {
 
 	// feel free to verify your answer here:
 	verify();
-	printList();
+	//printList();
 
 	// Free memory on Heap
 	free(thread);

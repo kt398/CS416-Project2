@@ -29,6 +29,7 @@ Node* blocked = NULL;
 ucontext_t* schedContext=NULL;
 ucontext_t* exitContext=NULL;
 ucontext_t* mainContext=NULL;
+tcb* mainBlock=NULL;
 struct itimerval timer;
 
 //functions
@@ -60,6 +61,13 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	// printf("CREATE\n");
 	// YOUR CODE HERE
 
+
+
+	if(exitContext==NULL){
+		exitContext = initializeContext();
+		makecontext(exitContext,(void*)(rpthread_exit),0);
+	}
+
 	//Initialize thread control block
 	if(mainContext==NULL&&head==NULL){
 		// printf("Inside create first if\n");
@@ -68,7 +76,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 		// 	perror("set current context");
 		// 	exit(1);
 		// }
-		tcb* mainBlock=malloc(sizeof(tcb));
+		mainBlock=malloc(sizeof(tcb));
 		mainBlock->id=malloc(sizeof(rpthread_t));
 		mainBlock->id=&mainThread;
 		mainBlock->status= READY;
@@ -82,7 +90,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
             perror("getcontext error");
             exit(1);
         }		
-		mainBlock->context->uc_link=NULL;
+		mainBlock->context->uc_link=exitContext;
 		Node* mainNode = malloc(sizeof(Node));
 		mainNode->tcb = mainBlock;
 		mainNode->next = NULL;
@@ -117,10 +125,6 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	}
 
 	//initialize exit context
-	if(exitContext==NULL){
-		exitContext = initializeContext();
-		makecontext(exitContext,(void*)(rpthread_exit),0);
-	}
 
 	block->context=initializeContext();
 	block->context->uc_link = exitContext;
@@ -130,19 +134,14 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	Node* node = malloc(sizeof(Node));
 	node->tcb = block;
 	node->next = NULL;
-	
 	enqueue(node);
-	printList();
 	//setcontext(head->tcb->context);
 	return 0;
 };
 
 void time_handler(){
-	// printf("Time slice has ended\n");
-	if(head->next!=NULL){
-		head->tcb->status = SCHEDULED;
-		swapcontext(head->tcb->context, schedContext);
-	}
+	head->tcb->status = SCHEDULED;
+	swapcontext(head->tcb->context, schedContext);
 }
 
 ucontext_t* initializeContext(){
@@ -325,9 +324,9 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 /* initialize the mutex lock */
 int rpthread_mutex_init(rpthread_mutex_t *mutex, 
                           const pthread_mutexattr_t *mutexattr) {
-	//initialize data structures for this mutex
-
+	//initialize data structures for this mutex	
 	// YOUR CODE HERE
+	mutex=malloc(sizeof(rpthread_mutex_t));
 	return 0;
 };
 
@@ -395,39 +394,36 @@ static void schedule() {
 static void sched_rr() {
 	// Your own implementation of RR
 	// (feel free to modify arguments and return types)
-
 	// YOUR CODE HERE
-
 	//No other processes in runqueue so we continue running process
 	int status=head->tcb->status;
-
 	if(status==KILL){ //coming from exit
 		// printf("KILL\n");
 		Node* temp=head;
 		head=head->next;
 		// free(temp->tcb->id);
+		// free(temp->tcb->parent);
 		free(temp->tcb->context->uc_stack.ss_sp);
 		free(temp->tcb->context);
-		// free(temp->tcb->parent);
 		free(temp->tcb);
 		free(temp);
 	}
 	else if(status==SCHEDULED){ //coming from yield
 		// printf("Yield?\n");
-		Node* temp = head;
-		head = head->next;
-		temp->next = NULL;
-		tail->next = temp;
-		tail = tail->next;
+		if(head->next!=NULL){
+			Node* temp = head;
+			head = head->next;
+			temp->next = NULL;
+			tail->next = temp;
+			tail = tail->next;
+		}
 	}
 	else if(status == BLOCKED){
 		Node* temp=head;
 		head=head->next;
 		enqueueBlocked(temp);
 	}
-
 	if(head!= NULL){
-		// printf("sched_rr\n");
 		head->tcb->status=READY;
 		timer.it_interval.tv_usec = 0;
 		timer.it_value.tv_usec = TIMESLICE;
@@ -435,8 +431,13 @@ static void sched_rr() {
 		setcontext(head->tcb->context);
 	}
 	else{
-		printf("here\n");
-		exit(0);
+		printf("End of program?\n");
+		free(schedContext->uc_stack.ss_sp);
+		free(schedContext);
+		free(exitContext->uc_stack.ss_sp);
+		free(exitContext);
+		printf("Freed Everything?\n");
+
 	}
 
 	//Otherwise, we switch to the next thread in the runqueue
