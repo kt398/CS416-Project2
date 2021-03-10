@@ -9,8 +9,8 @@
 #include <stdlib.h>
 #define STACK_SIZE SIGSTKSZ
 
-int x = 0;
-int y = 0;
+int x = 100;
+rpthread_mutex_t mutex;
 void simplef(){
 	puts("Donald- you are threaded\n");
 	// rpthread_yield();
@@ -19,18 +19,26 @@ void simplef(){
 
 }
 
-void incrementTest(){
-	while(1){
-		x++;
-		printf("X VALUE: %d\n", x);
+void increment(){
+	rpthread_mutex_lock(&mutex);
+	for(int i=0; i<100000; i++){
+		printf("%d\n", i);
 	}
+	rpthread_mutex_unlock(&mutex);
+}
+
+void incrementTest(){
+	int n = x;
+	n+=100;
+	x = n;
+	printf("X VALUE 1: %d\n", x);
 }
 
 void incrementTest2(){
-	while(1){
-		y--;
-		printf("Y VALUE: %d\n", y);
-	}
+	int n = x;
+	n+=50;
+	x = n;
+	printf("X VALUE 2: %d\n", x);
 }
 
 void simplef2(){
@@ -56,11 +64,12 @@ int main(int argc, char **argv) {
 
 	/* Implement HERE */
 	rpthread_t thread, thread2;
-	rpthread_create(&thread, NULL, incrementTest, NULL);
+	rpthread_mutex_init(&mutex, NULL);
+	rpthread_create(&thread, NULL, increment, NULL);
 	printf("Here in main after Thread 1\n");
-	rpthread_create(&thread2 ,NULL, incrementTest2, NULL);
+	rpthread_create(&thread2 ,NULL, increment, NULL);
 	int* val;
-	rpthread_join(thread2, &val);
+	// rpthread_join(thread2, &val);
 	printf("JOIN RETURN VALUE THINGY: %d\n", *val);
 	rpthread_exit(NULL);
 	return 0;

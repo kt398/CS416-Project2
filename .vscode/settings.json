@@ -1,6 +1,22 @@
 {
     "files.associations": {
         "rpthread.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "array": "c",
+        "*.tcc": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "memory": "c",
+        "optional": "c",
+        "string_view": "c",
+        "fstream": "c",
+        "istream": "c",
+        "ostream": "c",
+        "vector": "c",
+        "sstream": "c",
+        "streambuf": "c",
+        "thread": "c",
+        "functional": "c",
+        "tuple": "c"
     }
 }

@@ -15,7 +15,7 @@
 #ifndef TIMESLICE
 /* defined timeslice to 5 ms, feel free to change this while testing your code
  * it can be done directly in the Makefile*/
-#define TIMESLICE 1
+#define TIMESLICE 5
 #endif
 
 #define READY 0
@@ -36,6 +36,8 @@
 #include <string.h>
 
 typedef uint rpthread_t;
+
+
 
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */
@@ -58,22 +60,26 @@ typedef struct threadControlBlock {
 	void **val;
 } tcb; 
 
+typedef struct node{
+	tcb* tcb;
+	struct node* next;
+}Node;
+
 /* mutex struct definition */
 typedef struct rpthread_mutex_t {
 	/* add something here */
-	tcb* tcb;
 	
 	// YOUR CODE HERE
+	rpthread_t tid;
+	volatile int lock;
+	Node* mutexBlocked;
 } rpthread_mutex_t;
 
 /* define your data structures here: */
 // Feel free to add your own auxiliary data structures (linked list or queue etc...)
 
 // YOUR CODE HERE
-typedef struct node{
-	tcb* tcb;
-	struct node* next;
-}Node;
+
 
 /* Function Declarations: */
 
