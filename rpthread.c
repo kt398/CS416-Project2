@@ -24,7 +24,7 @@
 	static int levels=0;
 #endif
 
-
+//variables
 Node* head = NULL;
 Node* tail = NULL;
 Node* blocked = NULL;
@@ -34,6 +34,7 @@ ucontext_t* exitContext=NULL;
 ucontext_t* mainContext=NULL;
 tcb* mainBlock=NULL;
 struct itimerval timer;
+int inMutex=0;
 
 //functions
 static void schedule();
@@ -46,7 +47,8 @@ Node* dequeue(rpthread_t*, Node*);
 void enqueueBlocked(Node*);
 void time_handler();
 void printMutexList(Node* head);
-int inMutex=0;
+
+
 ucontext_t* tempFunction(){
 	return head->tcb->context;
 }
@@ -104,10 +106,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 
 		timer.it_interval.tv_usec = 0; 
 		timer.it_interval.tv_sec = 0;
-		timer.it_value.tv_usec = TIMESLICE;
-		timer.it_value.tv_sec = 0;
-		// Set the timer up (start the timer)
-		setitimer(ITIMER_PROF, &timer, NULL);
+		resetTimer();
 	}
 	tcb* block = malloc(sizeof(tcb));
 	block->id = malloc(sizeof(rpthread_t));
@@ -140,19 +139,21 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 void time_handler(){
 	// printf("Time slice has ended\n");
 	if(inMutex==1){
-		timer.it_interval.tv_usec = 0;
-		timer.it_value.tv_usec = TIMESLICE;
-		setitimer(ITIMER_PROF, &timer, NULL);
+		resetTimer();
 		return;
 	}
 	if(head->next!=NULL){
 		head->tcb->status = SCHEDULED;
 		swapcontext(head->tcb->context, schedContext);
 	}else{
-		timer.it_interval.tv_usec = 0;
-		timer.it_value.tv_usec = TIMESLICE;
-		setitimer(ITIMER_PROF, &timer, NULL);
+		resetTimer();
 	}
+}
+
+void resetTimer(){
+	timer.it_interval.tv_usec = 0;
+	timer.it_value.tv_usec = TIMESLICE;
+	setitimer(ITIMER_PROF, &timer, NULL);
 }
 
 ucontext_t* initializeContext(){
@@ -203,9 +204,7 @@ int rpthread_yield() {
 		head->tcb->status=SCHEDULED;
 		swapcontext(head->tcb->context, schedContext);
 	}else{
-		timer.it_interval.tv_usec = 0;
-		timer.it_value.tv_usec = TIMESLICE;
-		setitimer(ITIMER_PROF, &timer, NULL);
+		resetTimer();
 	}
 	return 0;
 };
@@ -235,8 +234,6 @@ void rpthread_exit(void *value_ptr){
 	}
 	schedule();
 }
-
-
 
 Node* dequeueBlocked(rpthread_t* key, Node* list){
 	Node* temp = list;
@@ -444,7 +441,6 @@ static void sched_rr() {
 	//No other processes in runqueue so we continue running process
 	int status=head->tcb->status;
 
-
 	if(status==KILL){ //coming from exit
 		// printf("KILL\n");
 		Node* temp=head;
@@ -482,9 +478,7 @@ static void sched_rr() {
 
 	if(head!= NULL){
 		head->tcb->status=READY;
-		timer.it_interval.tv_usec = 0;
-		timer.it_value.tv_usec = TIMESLICE;
-		setitimer(ITIMER_PROF, &timer, NULL);
+		resetTimer();
 		setcontext(head->tcb->context);
 	}
 	else{
@@ -517,6 +511,7 @@ static void sched_mlfq() {
 	// (feel free to modify arguments and return types)
 
 	// YOUR CODE HERE
+
 }
 
 // Feel free to add any other functions you need
