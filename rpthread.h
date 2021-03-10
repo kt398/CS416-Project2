@@ -70,7 +70,6 @@ typedef struct rpthread_mutex_t {
 	/* add something here */
 	
 	// YOUR CODE HERE
-	rpthread_t tid;
 	volatile int lock;
 	Node* mutexBlocked;
 } rpthread_mutex_t;

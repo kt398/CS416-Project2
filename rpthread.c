@@ -18,8 +18,10 @@
 
 #ifndef MLFQ
 	static int sched = 0;
+	static int levels=3;
 #else 
 	static int sched = 1;
+	static int levels=0;
 #endif
 
 
@@ -38,13 +40,13 @@ static void schedule();
 static void sched_rr();
 void enqueue();
 void printList();
-Node* findThread(rpthread_t, Node*);
 Node* dequeueBlocked(rpthread_t*, Node*);
 ucontext_t* initializeContext();
 Node* dequeue(rpthread_t*, Node*);
 void enqueueBlocked(Node*);
 void time_handler();
-
+void printMutexList(Node* head);
+int inMutex=0;
 ucontext_t* tempFunction(){
 	return head->tcb->context;
 }
@@ -137,6 +139,12 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 
 void time_handler(){
 	// printf("Time slice has ended\n");
+	if(inMutex==1){
+		timer.it_interval.tv_usec = 0;
+		timer.it_value.tv_usec = TIMESLICE;
+		setitimer(ITIMER_PROF, &timer, NULL);
+		return;
+	}
 	if(head->next!=NULL){
 		head->tcb->status = SCHEDULED;
 		swapcontext(head->tcb->context, schedContext);
@@ -228,16 +236,6 @@ void rpthread_exit(void *value_ptr){
 	schedule();
 }
 
-Node* findThread(rpthread_t key, Node* list){
-	Node* temp = list;
-	while (temp!=NULL){
-		if(*(temp->tcb->id)==key){
-			return temp;
-		}
-		temp=temp->next;
-	}
-	return NULL;
-}
 
 
 Node* dequeueBlocked(rpthread_t* key, Node* list){
@@ -305,7 +303,7 @@ int rpthread_mutex_init(rpthread_mutex_t *mutex,
 	// YOUR CODE HERE
 	mutex=malloc(sizeof(rpthread_mutex_t));
 	mutex->lock = 0;
-	mutex->mutexBlocked = malloc(sizeof(Node));
+	// mutex->mutexBlocked = malloc(sizeof(Node));
 	mutex->mutexBlocked = NULL;
 	return 0;
 };
@@ -318,28 +316,50 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
         // context switch to the scheduler thread
 
         // YOUR CODE HERE
+		inMutex=1;
 		while(__sync_lock_test_and_set (&(mutex->lock), 1)){
-			// timer.it_value.tv_usec = 0;
-			// timer.it_value.tv_sec = 0;
-			// setitimer(ITIMER_PROF, &timer, NULL);
-			// Node* temp = head;
+			timer.it_value.tv_usec = 0;
+			timer.it_value.tv_sec = 0;
+			setitimer(ITIMER_PROF, &timer,NULL);
+			Node* temp = head;
 			// printf("Inside lock\n");
-			// head = head->next;
-			// head->tcb->status = READY;
-			// if(mutex->mutexBlocked == NULL){
-			// 	temp->next = NULL;
-			// 	mutex->mutexBlocked = temp;
-			// }else{
-			// 	temp->next = mutex->mutexBlocked;
-			// 	mutex->mutexBlocked = temp;
-			// }
+			// printMutexList(mutex->mutexBlocked);
+			head = head->next;
+			head->tcb->status = READY;
+			if(mutex->mutexBlocked == NULL){
+				temp->next = NULL;
+				mutex->mutexBlocked = temp;
+			}else{
+				temp->next = mutex->mutexBlocked;
+				mutex->mutexBlocked = temp;
+			}
 			// printf("Before Context Switch in Lock\n");
-			head->tcb->status = MUTEX;
-			swapcontext(head->tcb->context, schedContext);
+			// printMutexList(mutex->mutexBlocked);
+			inMutex=0;
+			swapcontext(mutex->mutexBlocked->tcb->context, schedContext);
+			inMutex=1;
+			// head->tcb->status = MUTEX;
+			// swapcontext(head->tcb->context, schedContext);
+			
+			
+			
+			
+			// schedule(mutex);
 		}
 		// printf("Lock Return\n");
+		inMutex=0;
         return 0;
 };
+
+void printMutexList(Node* head){
+	Node* temp=head;
+	while(temp!=NULL){
+		printf("%s,",temp->tcb->temp);
+		temp=temp->next;
+	}
+	printf("\n");
+
+}
 
 /* release the mutex lock */
 int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
@@ -348,14 +368,30 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 	// so that they could compete for mutex later.
 
 	// YOUR CODE HERE
-	Node* ptr = mutex->mutexBlocked;
-	while(ptr!=NULL){
-		ptr->tcb->status = SCHEDULED;
-		ptr = ptr->next;
+	inMutex=1;
+	if(mutex->lock==1){
+		// printf("Unlocking Mutex?\n");
+		// printList();
+		Node* ptr = mutex->mutexBlocked;
+		while(ptr!=NULL){
+			ptr->tcb->status = SCHEDULED;
+			tail->next=ptr;
+			tail=tail->next;
+			ptr = ptr->next;
+		}
+		mutex->mutexBlocked = NULL;
+		// printf("Unlocked Mutex?\n");
+		// printList();
+		__sync_lock_release(&(mutex->lock));
 	}
-	tail->next = mutex->mutexBlocked;
-	mutex->mutexBlocked = NULL;
-	__sync_lock_release(&(mutex->lock));
+	else{
+		printf("Mutex is not locked\n");
+	}
+
+	// mutex->mutexBlocked=mutex->mutexBlocked->next;
+	// enqueue(ptr);
+
+	inMutex=0;
 	return 0;
 };
 
@@ -363,7 +399,7 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 	// Deallocate dynamic memory created in rpthread_mutex_init
-
+	free(mutex);
 	return 0;
 };
 
@@ -383,7 +419,9 @@ static void schedule() {
 	// 		sched_mlfq();
 
 	// YOUR CODE HERE
-	
+	timer.it_value.tv_usec = 0;
+	timer.it_value.tv_sec = 0;
+	setitimer(ITIMER_PROF, &timer,NULL);
 
 	// schedule policy
 	#ifndef MLFQ
@@ -405,6 +443,8 @@ static void sched_rr() {
 	// YOUR CODE HERE
 	//No other processes in runqueue so we continue running process
 	int status=head->tcb->status;
+
+
 	if(status==KILL){ //coming from exit
 		// printf("KILL\n");
 		Node* temp=head;
@@ -449,6 +489,7 @@ static void sched_rr() {
 	}
 	else{
 		printf("End of program?\n");
+		printList();
 		exit(0);
 		// free(schedContext->uc_stack.ss_sp);
 		// free(schedContext);
