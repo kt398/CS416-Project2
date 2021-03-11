@@ -21,6 +21,7 @@
 #else 
 	static int levels=4;
 #endif
+
 //variables
 Node** head = NULL;
 Node** tail = NULL;
@@ -98,7 +99,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	// create and initialize the context of this thread
 	// allocate space of stack for this thread to run
 	// after everything is all set, push this thread int
-	// printf("CREATE\n");
+	
 	// YOUR CODE HERE
 	if(isInit==0){
 		firstTimeInit();
@@ -117,12 +118,10 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 	node->tcb = block;
 	node->next = NULL;
 	enqueue(node,0);
-	//setcontext(head->tcb->context);
 	return 0;
 };
 
 void time_handler(){
-	// printf("Time slice has ended\n");
 	if(inMutex==1){
 		resetTimer();
 		return;
@@ -131,7 +130,6 @@ void time_handler(){
 	if(head[currentLevel]->next!=NULL){
 		head[currentLevel]->tcb->status = TIME;
 		swapcontext(head[currentLevel]->tcb->context, schedContext);
-		// printf("after time handler?\n");
 		return;
 	}else{
 		resetTimer();
@@ -192,10 +190,6 @@ int rpthread_yield() {
 	// switch from thread context to scheduler context
 
 	// YOUR CODE HERE
-
-	//save context then switch to scheduler context
-
-	//TODO BIG CHANGES FOR MLFQ
 	if(head[currentLevel]->next!=NULL){
 		head[currentLevel]->tcb->status=SCHEDULED;
 		swapcontext(head[currentLevel]->tcb->context, schedContext);
@@ -265,13 +259,10 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 	// de-allocate any dynamic memory created by the joining thread
 	
 	// YOUR CODE HERE
-	// printf("Thread ID:%u\n",thread);
 	inMutex=1;
 	for(int i=0;i<levels;i++){
-		// printf("Join\n");
 		Node* ptr = head[i];
 		while(ptr!=NULL){
-			// printf("%d\n", (ptr->tcb->id));
 			if(ptr->tcb->id == thread && ptr!=head[currentLevel]){
 				ptr->tcb->parent = head[currentLevel]->tcb->id;
 				head[currentLevel]->tcb->status = BLOCKED;
@@ -293,7 +284,6 @@ int rpthread_mutex_init(rpthread_mutex_t *mutex,
                           const pthread_mutexattr_t *mutexattr) {
 	//initialize data structures for this mutex	
 	// YOUR CODE HERE
-	// mutex=malloc(sizeof(rpthread_mutex_t));
 	mutex->lock = 0;
 	// mutex->mutexBlocked = malloc(sizeof(Node));
 	mutex->mutexBlocked = NULL;
@@ -372,7 +362,6 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 	// rpthread_mutex_t* mx;
 	// *mx = *mutex;
 	// free(mutex->mutexBlocked);
-	// free(mutex);
 	return 0;
 };
 
@@ -486,15 +475,17 @@ void nextThread(){
 }
 
 void cleanup (void) {
-	free(schedContext->uc_stack.ss_sp);
-	free(schedContext);
-	free(exitContext->uc_stack.ss_sp);
-	free(exitContext);
+	if(isInit!=0){
+		free(schedContext->uc_stack.ss_sp);
+		free(schedContext);
+		free(exitContext->uc_stack.ss_sp);
+		free(exitContext);
 
-	free(mainNode->tcb->context);
-	free(mainNode->tcb);
-	free(mainNode);
+		free(mainNode->tcb->context);
+		free(mainNode->tcb);
+		free(mainNode);
 
-	free(head);
-	free(tail);
+		free(head);
+		free(tail);
+	}
 }
