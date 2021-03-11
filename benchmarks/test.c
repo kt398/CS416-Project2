@@ -65,6 +65,10 @@ int main(int argc, char **argv) {
 	/* Implement HERE */
 	rpthread_t thread, thread2;
 	rpthread_mutex_init(&mutex, NULL);
+	rpthread_mutex_lock(&mutex);
+	printf("after lock\n");
+	rpthread_mutex_unlock(&mutex);
+	printf("after unlock\n");
 	rpthread_mutex_destroy(&mutex);
 	// rpthread_create(&thread, NULL, increment, NULL);
 	// printf("Here in main after Thread 1\n");
