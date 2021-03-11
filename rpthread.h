@@ -81,6 +81,18 @@ typedef struct rpthread_mutex_t {
 
 
 /* Function Declarations: */
+void enqueue(Node*,int);
+void printList();
+Node* dequeueBlocked(rpthread_t*, Node*);
+ucontext_t* initializeContext();
+Node* dequeue(rpthread_t*, Node*);
+void enqueueBlocked(Node*);
+void time_handler();
+void printMutexList(Node* head);
+void firstTimeInit();
+void resetTimer();
+void nextThread();
+
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, void

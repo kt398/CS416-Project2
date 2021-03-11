@@ -17,9 +17,9 @@
 #define STACK_SIZE SIGSTKSZ
 
 #ifndef MLFQ
-	static int levels=4;
-#else 
 	static int levels=1;
+#else 
+	static int levels=4;
 #endif
 
 //variables
@@ -36,29 +36,20 @@ struct itimerval timer;
 int inMutex=0;//1 if current thread is in the mutex function, 0 otherwise
 int isInit=0;//Boolean to check if first time initialization has been completed
 int currentLevel=0;//Current level of the mlfq, if rr then it is always 0
+
 //functions
 static void schedule();
 static void sched_rr();
-void enqueue(Node*,int);
-void printList();
-Node* dequeueBlocked(rpthread_t*, Node*);
-ucontext_t* initializeContext();
-Node* dequeue(rpthread_t*, Node*);
-void enqueueBlocked(Node*);
-void time_handler();
-void printMutexList(Node* head);
-void firstTimeInit();
-void resetTimer();
-
-
-
-
+static void sched_mlfq();
 
 // YOUR CODE HERE
-
 void firstTimeInit(){
 	head=malloc(levels*sizeof(Node*));
 	tail=malloc(levels*sizeof(Node*));
+	for(int i=0; i<levels; i++){
+		head[i] = NULL;
+		tail[i] = NULL;
+	}
 
 	//Initializing the exit context
 	exitContext = initializeContext();
@@ -146,7 +137,7 @@ void time_handler(){
 	}
 	//BIG CHANGES FOR MLFQ
 	if(head[currentLevel]->next!=NULL){
-		head[currentLevel]->tcb->status = SCHEDULED;
+		head[currentLevel]->tcb->status = TIME;
 		swapcontext(head[currentLevel]->tcb->context, schedContext);
 	}else{
 		resetTimer();
@@ -178,20 +169,24 @@ ucontext_t* initializeContext(){
 }
 
 void printList(){
-	Node* temp=head[currentLevel];
-	printf("Head List:\n");
-	while(temp!=NULL){
-		printf("%s,",temp->tcb->temp);
-		temp=temp->next;
+	for(int i=0; i<levels; i++){
+		Node* temp=head[i];
+		printf("%d List:\n", i);
+		while(temp!=NULL){
+			printf("%s,",temp->tcb->temp);
+			temp=temp->next;
+		}
+		printf("\n");
 	}
-	printf("\n");
-	printf("Blocked List:\n");
-	temp=blocked;
-	while(temp!=NULL){
-		printf("%s,",temp->tcb->temp);
-		temp=temp->next;
-	}
-	printf("\n");
+	
+	// printf("Blocked List:\n");
+	// temp=blocked;
+	// while(temp!=NULL){
+	// 	printf("%s,",temp->tcb->temp);
+	// 	temp=temp->next;
+	// }
+	// printf("\n");
+	
 }
 
 /* give CPU possession to other user-level threads voluntarily */
@@ -227,7 +222,6 @@ void rpthread_exit(void *value_ptr){
 
 	// store value_ptr in parent's tcb
 	if(head[currentLevel]->tcb->parent!=NULL){
-		// printf("Parent not null\n");
 		Node* par = dequeueBlocked(head[currentLevel]->tcb->parent, blocked);
 		//Set to SCHEDULED and enqueue back to runqueue
 		par->tcb->status = SCHEDULED;
@@ -278,7 +272,8 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 	// YOUR CODE HERE
 
 	for(int i=0;i<levels;i++){
-	Node* ptr = head[i];
+		// printf("Join\n");
+		Node* ptr = head[i];
 		while(ptr!=NULL){
 			// printf("%d\n", (ptr->tcb->id));
 			if(*(ptr->tcb->id) == thread){
@@ -289,7 +284,6 @@ int rpthread_join(rpthread_t thread, void **value_ptr) {
 			ptr = ptr->next;
 		}
 	}
-
 	swapcontext(head[currentLevel]->tcb->context, schedContext);
 	if(value_ptr!=NULL){
 		*value_ptr = head[currentLevel]->tcb->val;
@@ -329,15 +323,25 @@ int rpthread_mutex_lock(rpthread_mutex_t *mutex) {
 			Node* temp = head[currentLevel];
 			// printf("Inside lock\n");
 			// printMutexList(mutex->mutexBlocked);
+			
 			head[currentLevel] = head[currentLevel]->next;
-			head[currentLevel]->tcb->status = READY;
 			if(mutex->mutexBlocked == NULL){
 				temp->next = NULL;
+				temp->tcb->priority=currentLevel; 
 				mutex->mutexBlocked = temp;
 			}else{
 				temp->next = mutex->mutexBlocked;
+				temp->tcb->priority=currentLevel; 
 				mutex->mutexBlocked = temp;
 			}
+			for(int i=0; i<levels; i++){
+				if(head[i]!= NULL){
+					head[i]->tcb->status=READY;
+					currentLevel = i;
+					break;
+				}
+			}
+			
 			// printf("Before Context Switch in Lock\n");
 			// printMutexList(mutex->mutexBlocked);
 			inMutex=0;
@@ -380,8 +384,9 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 		Node* ptr = mutex->mutexBlocked;
 		while(ptr!=NULL){
 			ptr->tcb->status = SCHEDULED;
-			tail[currentLevel]->next=ptr;
-			tail[currentLevel]=tail[currentLevel]->next;
+			enqueue(ptr, ptr->tcb->priority);
+			// tail[currentLevel]->next=ptr;
+			// tail[currentLevel]=tail[currentLevel]->next;
 			ptr = ptr->next;
 		}
 		mutex->mutexBlocked = NULL;
@@ -404,8 +409,9 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 	// Deallocate dynamic memory created in rpthread_mutex_init
-	rpthread_mutex_t* mx=mutex;
-	free(mx);
+	// rpthread_mutex_t* mx;
+	// *mx = *mutex;
+	// free(mx);
 	return 0;
 };
 
@@ -425,6 +431,7 @@ static void schedule() {
 	// 		sched_mlfq();
 
 	// YOUR CODE HERE
+	inMutex = 1;
 	timer.it_value.tv_usec = 0;
 	timer.it_value.tv_sec = 0;
 	setitimer(ITIMER_PROF, &timer,NULL);
@@ -460,7 +467,7 @@ static void sched_rr() {
         free(temp->tcb);
         free(temp);
     }
-    else if(status==SCHEDULED){ //coming from yield
+    else if(status==SCHEDULED || status == TIME){ //coming from yield
         // printf("Yield?\n");
         if(head[currentLevel]->next!=NULL){
             Node* temp = head[currentLevel];
@@ -473,33 +480,11 @@ static void sched_rr() {
     else if(status == BLOCKED){
         Node* temp=head[currentLevel];
         head[currentLevel]=head[currentLevel]->next;
+		temp->next = NULL;
         enqueueBlocked(temp);
-    }else if(status == MUTEX){
-        // if(head->next!=NULL){
-        //     Node* temp = head;
-        //     head = head->next;
-        //     temp->next = NULL;
-        //     tail->next = temp;
-        //     tail = tail->next;
-        // }
     }
-
-    if(head[currentLevel]!= NULL){
-        head[currentLevel]->tcb->status=READY;
-        resetTimer();
-        setcontext(head[currentLevel]->tcb->context);
-    }
-    else{
-        printf("End of program?\n");
-        //printList();
-        exit(0);
-        // free(schedContext->uc_stack.ss_sp);
-        // free(schedContext);
-        // free(exitContext->uc_stack.ss_sp);
-        // free(exitContext);
-        // printf("Freed Everything?\n");
-
-    }
+	nextThread();
+   
 }
 
 /* Preemptive MLFQ scheduling algorithm */
@@ -508,27 +493,49 @@ static void sched_mlfq() {
 	// (feel free to modify arguments and return types)
 
 	// YOUR CODE HERE
+	int status = head[currentLevel]->tcb->status;
+	if(status == TIME){
+		// printList();
+		Node* temp = head[currentLevel];
+		head[currentLevel] = head[currentLevel]->next;
+		temp->next = NULL;
+		if(currentLevel == 3){
+			enqueue(temp, currentLevel);
+		}else{
+			enqueue(temp, currentLevel+1);
+		}
+		// printList();
+	}else sched_rr();
+
+
+	nextThread();
 }
 
 // Feel free to add any other functions you need
 
 // YOUR CODE HERE
 void enqueue(Node* node, int level){
-	printf("Enqueue");
     if(head[level] == NULL){
         head[level] = node;
         tail[level] = head[level];
         return;
     }
-    #ifndef MLFQ
-        // RR - Enqueue into end of runqueue
-        tail[level]->next = node;
-        tail[level] = tail[level]->next;
-        tail[level]->next = NULL;
-   		printList();
-
-	#else 
-        // MLFQ - Enqueue to the topmost queue
-
-    #endif
+    tail[level]->next = node;
+	tail[level] = tail[level]->next;
+	tail[level]->next = NULL;
 }
+
+void nextThread(){
+	for(int i=0; i<levels; i++){
+		if(head[i]!= NULL){
+			head[i]->tcb->status=READY;
+			resetTimer();
+			currentLevel = i;
+			inMutex = 0;
+			setcontext(head[i]->tcb->context);
+		}
+	}
+	printf("End of program?\n");
+	exit(0);
+}
+
