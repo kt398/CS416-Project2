@@ -31,7 +31,7 @@
 #include "ucontext.h"
 #include <signal.h>
 #include <unistd.h>
-
+#include <limits.h>
 #include <sys/time.h>
 #include <string.h>
 
@@ -50,13 +50,13 @@ typedef struct threadControlBlock {
 
 	// YOUR CODE HERE
 	char* temp;
-	rpthread_t* id;
+	rpthread_t id;
 	int status;
 	ucontext_t* context;
 	void* stack;
 	void* args;
 	int priority;
-	rpthread_t* parent;
+	rpthread_t parent;
 	void **val;
 } tcb; 
 
@@ -83,7 +83,7 @@ typedef struct rpthread_mutex_t {
 /* Function Declarations: */
 void enqueue(Node*,int);
 void printList();
-Node* dequeueBlocked(rpthread_t*, Node*);
+Node* dequeueBlocked(rpthread_t, Node*);
 ucontext_t* initializeContext();
 Node* dequeue(rpthread_t*, Node*);
 void enqueueBlocked(Node*);
