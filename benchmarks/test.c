@@ -65,12 +65,13 @@ int main(int argc, char **argv) {
 	/* Implement HERE */
 	rpthread_t thread, thread2;
 	rpthread_mutex_init(&mutex, NULL);
-	rpthread_create(&thread, NULL, increment, NULL);
-	printf("Here in main after Thread 1\n");
-	rpthread_create(&thread2 ,NULL, increment, NULL);
-	int* val;
-	// rpthread_join(thread2, &val);
-	printf("JOIN RETURN VALUE THINGY: %d\n", *val);
-	rpthread_exit(NULL);
+	rpthread_mutex_destroy(&mutex);
+	// rpthread_create(&thread, NULL, increment, NULL);
+	// printf("Here in main after Thread 1\n");
+	// rpthread_create(&thread2 ,NULL, increment, NULL);
+	// int* val;
+	// // rpthread_join(thread2, &val);
+	// printf("JOIN RETURN VALUE THINGY: %d\n", *val);
+	// rpthread_exit(NULL);
 	return 0;
 }
