@@ -23,6 +23,7 @@ void vector_multiply(void* arg) {
 	for (i = n; i < VECTOR_SIZE; i += thread_num) {
 		pthread_mutex_lock(&mutex);
 		res += r[i] * s[i];
+		//printf("test\n");
 		pthread_mutex_unlock(&mutex);	
 	}
 
