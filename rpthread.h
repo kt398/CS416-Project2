@@ -92,7 +92,7 @@ void printMutexList(Node* head);
 void firstTimeInit();
 void resetTimer();
 void nextThread();
-
+void cleanup (void) __attribute__ ((destructor));
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, void
