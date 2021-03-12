@@ -45,6 +45,7 @@ static void sched_mlfq();
 
 // YOUR CODE HERE
 void firstTimeInit(){
+	// printf("Time slice:%d\n",TIMESLICE);
 	currentLevel=0;
 	head=malloc(levels*sizeof(Node*));
 	tail=malloc(levels*sizeof(Node*));
@@ -284,8 +285,11 @@ int rpthread_mutex_init(rpthread_mutex_t *mutex,
                           const pthread_mutexattr_t *mutexattr) {
 	//initialize data structures for this mutex	
 	// YOUR CODE HERE
+
+	if(isInit==0){
+		firstTimeInit();
+	}
 	mutex->lock = 0;
-	// mutex->mutexBlocked = malloc(sizeof(Node));
 	mutex->mutexBlocked = NULL;
 	return 0;
 };
@@ -358,10 +362,16 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex) {
 
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
+
 	// Deallocate dynamic memory created in rpthread_mutex_init
 	// rpthread_mutex_t* mx;
 	// *mx = *mutex;
 	// free(mutex->mutexBlocked);
+
+	//Check to make sure that no thread is currently usingt the mutex.
+	while(mutex->lock==1){
+		rpthread_yield();
+	}
 	return 0;
 };
 
@@ -472,20 +482,4 @@ void nextThread(){
 	printList();
 	printf("Mutex List");
 	exit(0);
-}
-
-void cleanup (void) {
-	if(isInit!=0){
-		free(schedContext->uc_stack.ss_sp);
-		free(schedContext);
-		free(exitContext->uc_stack.ss_sp);
-		free(exitContext);
-
-		free(mainNode->tcb->context);
-		free(mainNode->tcb);
-		free(mainNode);
-
-		free(head);
-		free(tail);
-	}
 }

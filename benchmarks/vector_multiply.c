@@ -36,7 +36,7 @@ void verify() {
 	for (i = 0; i < VECTOR_SIZE; i += 1) {
 		res += r[i] * s[i];	
 	}
-	printf("verified res is: %d\n", res);
+	printf(" %d\n", res);
 }
 
 int main(int argc, char **argv) {
@@ -80,9 +80,9 @@ int main(int argc, char **argv) {
 		pthread_join(thread[i], NULL);
 
 	clock_gettime(CLOCK_REALTIME, &end);
-        printf("running time: %lu micro-seconds\n", 
+        printf("%lu ", 
 	       (end.tv_sec - start.tv_sec) * 1000 + (end.tv_nsec - start.tv_nsec) / 1000000);
-	printf("res is: %d\n", res);
+	printf("%d", res);
 
 	pthread_mutex_destroy(&mutex);
 	verify();
